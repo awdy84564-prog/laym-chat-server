@@ -1,4 +1,6 @@
-Flask
-Flask-SocketIO
+flask
+flask-cors
+gunicorn==21.2.0
+flask-socketio
 python-socketio
 python-engineio
