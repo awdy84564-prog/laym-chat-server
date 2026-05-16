@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Laym Chat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body { background:#111; color:#fff; font-family:Arial; margin:0; padding:10px; }
+#login, #chat { max-width:600px; margin:auto; }
+input, button, select { width:100%; padding:10px; margin:5px 0; border:none; border-radius:5px; }
+button { background:#7b2cff; color:#fff; cursor:pointer; }
+#messages { height:400px; overflow-y:auto; background:#1a1a1a; padding:10px; border-radius:5px; }
+.msg { margin:5px 0; padding:5px; border-bottom:1px solid #333; }
+#chat { display:none; }
+#reports { background:#2a0000; padding:10px; margin-top:10px; display:none; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <h2>دخول Laym Chat</h2>
+  <input id="username" placeholder="اسمك">
+  <select id="role">
+    <option value="member">عضو</option>
+    <option value="vip">VIP</option>
+    <option value="master">ماستر</option>
+    <option value="root">روت</option>
+    <option value="founder">مؤس</option>
+  </select>
+  <input id="password" type="password" placeholder="كلمة السر">
+  <button onclick="login()">دخول</button>
+  <p id="loginError" style="color:red;"></p>
+</div>
+
+<div id="chat">
+  <h3 id="welcome"></h3>
+  <div id="messages"></div>
+  <input id="msgInput" placeholder="اكتب رسالتك">
+  <button onclick="sendMsg()">ارسال</button>
+  <button onclick="lockChat()">قفل/فتح الشات</button>
+  <div id="reports">
+    <h4>البلاغات</h4>
+    <div id="reportList"></div>
+  </div>
+</div>
+
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+const socket = io('https://laym-chat-server.onrender.com');
+let myRole = '';
+
+function login() {
+  socket.emit('login', {
+    username: document.getElementById('username').value,
+    role: document.getElementById('role').value,
+    password: document.getElementById('password').value
+  });
+}
+
+socket.on('loginSuccess', (data) => {
+  myRole = data.role;
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('chat').style.display = 'block';
+  document.getElementById('welcome').innerText = 'مرحباً ' + data.username + ' - ' + data.role;
+  if (data.role === 'founder') document.getElementById('reports').style.display = 'block';
+});
+
+socket.on('loginError', (err) => {
+  document.getElementById('loginError').innerText = err;
+});
+
+socket.on('message', (data) => {
+  document.getElementById('messages').innerHTML +=
+    `<div class="msg" style="color:${data.color}"><b>${data.username}:</b> ${data.text} <small>${data.time}</small></div>`;
+});
+
+socket.on('system', (msg) => {
+  document.getElementById('messages').innerHTML +=
+    `<div class="msg" style="color:yellow;">[نظام] ${msg}</div>`;
+});
+
+socket.on('newReport', (rep) => {
+  document.getElementById('reportList').innerHTML +=
+    `<div>المستخدم: ${rep.reportedUser}<br>الرسالة: ${rep.message}<br>الوقت: ${rep.time}</div><hr>`;
+});
+
+function sendMsg() {
+  const msg = document.getElementById('msgInput').value;
+  if (!msg) return;
+  socket.emit('message', msg);
+  document.getElementById('msgInput').value = '';
+}
+
+function lockChat() {
+  if (myRole === 'root' || myRole === 'founder') {
+    socket.emit('lockChat', true);
+  }
+}
+
+function reportUser(user, msg) {
+  socket.emit('report', { reportedUser: user, message: msg, type: 'abuse' });
+}
+</script>
+</body>
+</html>
